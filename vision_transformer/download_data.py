@@ -27,14 +27,22 @@ def download_data(url:str,name:str=None,data_path:str=None):
         "http": "http://127.0.0.1:7890",
         "https": "http://127.0.0.1:7890",
     }
-    # 下载数据到data_path
     zip_path=os.path.join(data_dir,name)
-    with open(zip_path,"wb") as f:
+    # 获取数据
+    response = requests.get(url, stream=True, proxies=proxies)
+    # 获取数据长度
+    file_size = int(response.headers.get("Content-Length"))
+    # 下载数据到data_path
+    with open(zip_path,"wb") as f,tqdm(
+        total=file_size,
+        unit="B",
+        unit_divisor=1024,
+        unit_scale=True,
+    ) as bar: # 设置进度条
         logger.info(f"Downloading {data_path}")
-        request=requests.get(url,stream=True,proxies=proxies)
-        for chunk in tqdm(request.iter_content(chunk_size=1024)):
+        for chunk in response.iter_content(chunk_size=1024):
             if chunk:
                 f.write(chunk)
-
+                bar.update(1024)
 if __name__=="__main__":
     download_data(url="https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip")
