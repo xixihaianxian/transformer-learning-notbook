@@ -5,6 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 import zipfile
 from typing import List
+import config
 
 def recursive_unzip(zip_name:str,unpack_path:str):
     r"""
@@ -32,7 +33,7 @@ def recursive_unzip(zip_name:str,unpack_path:str):
     # 解压成功日志
     logger.info(f"unpack successful!")
 
-def download_data(url:str,name:str=None,data_path:str=None):
+def download_data(url:str,name:str=None,data_path:str=None,need_unpack:bool=True):
     r"""
     Download the file from the given file path to the specified path and unzip it.
     :return: data path
@@ -82,17 +83,22 @@ def download_data(url:str,name:str=None,data_path:str=None):
         "tbz2",
     ]
     # 解压数据
-    try:
-        compress_type=name.split(sep=".")[1] # 获取压缩类型
-        zip_name=name.split(sep=".")[0] # 获取要解压到文件的名称
-        unpack_path=os.path.join(data_dir,zip_name) # 解压到文件的路径
-        if compress_type in compression_formats:
-            recursive_unzip(zip_path,unpack_path)
-        else:
-            raise ValueError
-    except IndexError as e:
-        logger.warning(f"Not find compress file.")
-    except ValueError as e:
-        logger.warning(f"Not find compress type.")
+    if need_unpack: # 判断是否需要解压压缩包
+        try:
+            compress_type=name.split(sep=".")[1] # 获取压缩类型
+            zip_name=name.split(sep=".")[0] # 获取要解压到文件的名称
+            unpack_path=os.path.join(data_dir,zip_name) # 解压到文件的路径
+            if compress_type in compression_formats:
+                recursive_unzip(zip_path,unpack_path)
+            else:
+                raise ValueError
+        except IndexError as e:
+            logger.warning(f"Not find compress file.")
+        except ValueError as e:
+            logger.warning(f"Not find compress type.")
+# Github加速组件
+class GitHubAccelerator:
+    def __init__(self):
+        self.download_url=config.DOWNLOAD_URL
 if __name__=="__main__":
-    download_data(url="https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip")
+    download_data(url="https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip",need_unpack=False)
