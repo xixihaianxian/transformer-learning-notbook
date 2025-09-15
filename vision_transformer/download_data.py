@@ -10,6 +10,9 @@ from urllib.parse import urljoin
 import time
 import threading
 import random
+import re
+import subprocess
+from urllib import parse
 
 def recursive_unzip(zip_name:str,unpack_path:str):
     r"""
@@ -112,6 +115,8 @@ class GitHubAccelerator:
         self.download_url=config.DOWNLOAD_URL
         # 定义raw下载链接
         self.raw_url=config.RAW_URL
+        # 定义clone url下载链接
+        self.clone_url=config.CLONE_URL
     # 重写github下载的url
     def rewrite_github_url(self,original_url:str,node_type:str="download")->List[Tuple[str,str,str]]:
         # 判断链接是否是github内部的链接
@@ -120,6 +125,14 @@ class GitHubAccelerator:
             raise ValueError(f"{original_url} not is a github url!")
         #判断下载类型
         nodes=self.download_url if node_type=="download" else self.raw_url
+        # if node_type=="download":
+        #     nodes=self.download_url
+        # elif node_type=="raw":
+        #     nodes=self.raw_url
+        # elif node_type=="clone":
+        #     nodes=self.clone_url
+        # else:
+        #     nodes=self.download_url # 默认等于download_url
         # 构建极速下载的清单
         for node_url,countries,description in nodes:
             # 处理下载链接
@@ -131,11 +144,11 @@ class GitHubAccelerator:
             # 处理raw链接
             elif node_type=="raw":
                 if "/blob/" in original_url:
-                    # accelerated_url=original_url.replace(
-                    #     "https://github.com",
-                    #     node_url
-                    # ).replace("/blob/","/")
-                    accelerated_url=urljoin(node_url,original_url)
+                    accelerated_url=original_url.replace(
+                        "https://github.com",
+                        node_url
+                    ).replace("/blob/","/")
+                    # accelerated_url=urljoin(node_url,original_url)
                 else:
                     accelerated_url=original_url.replace(
                         "https://github.com",
@@ -144,6 +157,22 @@ class GitHubAccelerator:
             else:
                 accelerated_url=original_url
             accelerated_urls.append((accelerated_url,countries,description))
+        return accelerated_urls
+    # 重写clone url:
+    def rewrite_clone_url(self,original_url:str)->List[Tuple[str,str,str]]:
+        stype=os.path.splitext(original_url)[1]
+        accelerated_urls = []
+        # 判断是否是clone url路径
+        if stype!=".git":
+            raise ValueError(f"{original_url} not is a clone url!")
+        else:
+            href_split = original_url.split("github.com", 1)[1]
+            for node_url,countries,description in self.clone_url:
+                if node_url.startswith("https://gitclone.com"):
+                    accelerated_url=node_url+"/github.co"+href_split
+                else:
+                    accelerated_url=node_url+href_split
+                accelerated_urls.append((accelerated_url,countries,description))
         return accelerated_urls
     # 测速
     def test_node_speed(self,url:str,timeout=5):
@@ -192,10 +221,34 @@ class GitHubAccelerator:
         logger.info(f"📍 正在使用{countries}的节点。")
         logger.info(f"🙏 感谢{description}。")
         download_data(url=accelerated_url)
-
+    # clone Project,运行之前请确认你已经安装了git
+    def clone_project(self,accelerated_urls:List[Tuple[str,str,str]],target_directory:str=None):
+        for accelerated_url, countries, description in accelerated_urls:
+            if target_directory is None:
+                target_directory=os.path.basename(accelerated_url).split(".")[0]
+            logger.info(f"📍 正在使用{countries}的节点。")
+            logger.info(f"🙏 感谢{description}。")
+            try:
+                # 判断是否指定clone到指定目录
+                # if target_directory is None:
+                #     subprocess.run(["git","clone",accelerated_url],timeout=300,check=True)
+                # else:
+                subprocess.run(["git", "clone", accelerated_url,target_directory], timeout=300, check=True)
+                logger.info(f"✅ clone project successful!")
+                break
+            except subprocess.TimeoutExpired as e:
+                # 删除项目文件，防止下一次clone时出错
+                os.removedirs(target_directory)
+                logger.error("⏰ time out!")
+            except subprocess.CalledProcessError as e:
+                # 删除项目文件，防止下一次clone时出错
+                os.removedirs(target_directory)
+                logger.error(f"❌ git 命令失败:{e}")
 if __name__=="__main__":
-    original_url="https://github.com/PowerShell/PowerShell/releases/download/v7.5.3/powershell-7.5.3-linux-arm64.tar.gz"
+    original_url="https://github.com/PowerShell/PowerShell.git"
     gitHub_accelerator=GitHubAccelerator()
-    urls=gitHub_accelerator.rewrite_github_url(original_url)
-    url_desc=gitHub_accelerator.get_fastest_node(urls)
-    gitHub_accelerator.download_file(url_desc)
+    # urls=gitHub_accelerator.rewrite_github_url(original_url)
+    # url_desc=gitHub_accelerator.get_fastest_node(urls)
+    # gitHub_accelerator.download_file(url_desc)
+    urls=gitHub_accelerator.rewrite_clone_url(original_url)
+    gitHub_accelerator.clone_project(accelerated_urls=urls)

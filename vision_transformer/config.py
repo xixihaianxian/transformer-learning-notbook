@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 DOWNLOAD_URL = [
         ('https://gh.h233.eu.org/https://github.com', '美国', '[美国 Cloudflare CDN] - 该公益加速源由 [@X.I.U/XIU2] 提供'),
         ('https://ghproxy.1888866.xyz/https://github.com', '美国', '[美国 Cloudflare CDN] - 该公益加速源由 [WJQSERVER-STUDIO/ghproxy] 提供'),
@@ -49,4 +51,14 @@ RAW_URL = [
     ('https://fastly.jsdelivr.net/gh', '日本 2', '[日本 东京] - 该公益加速源由 [JSDelivr CDN] 提供 - 缓存：有 - 不支持大小超过 50 MB 的文件 - 不支持版本号格式的分支名（如 v1.2.3）'),
     ('https://g.blfrp.cn/https://raw.githubusercontent.com', '日本 3', '[日本 东京] - 该公益加速源由 [g.blfrp.cn] 提供'),
     ('https://github.3x25.com/https://raw.githubusercontent.com', '新加坡', '[新加坡] - 该公益加速源由 [github.3x25.com] 提供'),
+]
+
+CLONE_URL: List[Tuple[str, str, str]] = [
+    ("https://gitclone.com/github.com", "国内", "[中国 国内] - GitClone 提供,首次比较慢，缓存后较快"),
+    ("https://kkgithub.com", "香港", "[中国香港、日本、新加坡等] - help.kkgithub.com 提供"),
+    ("https://wget.la/https://github.com", "香港", "[中国香港、中国台湾、日本、美国等]（CDN 不固定） - ucdn.me 提供"),
+    ("https://hk.gh-proxy.com/https://github.com", "香港", "[中国香港] - gh-proxy.com 提供"),
+    ("https://ghfast.top/https://github.com", "韩国", "[日本、韩国、新加坡、美国、德国等]（CDN 不固定） - ghproxy 提供"),
+    ("https://githubfast.com", "韩国", "[韩国] - Github Fast 提供"),
+    ("https://ghproxy.net/https://github.com", "日本", "[日本 大阪] - ghproxy.net 提供"),
 ]
