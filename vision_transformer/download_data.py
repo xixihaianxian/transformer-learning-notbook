@@ -13,7 +13,9 @@ import random
 import re
 import subprocess
 from urllib import parse
+import argparse
 
+# 解压模块
 def recursive_unzip(zip_name:str,unpack_path:str):
     r"""
     :param zip_name: 压缩包名称
@@ -40,13 +42,14 @@ def recursive_unzip(zip_name:str,unpack_path:str):
     # 解压成功日志
     logger.info(f"unpack successful!")
 
+# 下载
 def download_data(url:str,name:str=None,data_path:str=None,need_unpack:bool=True):
     r"""
     Download the file from the given file path to the specified path and unzip it.
     :param url: download url
-    :param name: zip name
+    :param name: zip name (包含后缀.zip)
     :param data_path: zip root dir(压缩包根路径)
-    :param need_unpack: Is it necessary to extract?
+    :param need_unpack: Is it necessary to extract?(是否需要解压)
     :return:
     """
     # 判断是name是否提前定义
@@ -216,11 +219,12 @@ class GitHubAccelerator:
         else:
             return random.choice(accelerated_urls)
     # 下载
-    def download_file(self,url_desc):
+    def download_file(self,url_desc,name:str=None,data_path:str=None,need_unpack:bool=True):
         accelerated_url, countries, description= url_desc
         logger.info(f"📍 正在使用{countries}的节点。")
         logger.info(f"🙏 感谢{description}。")
-        download_data(url=accelerated_url)
+        # 下载数据
+        download_data(url=accelerated_url,name=name,data_path=data_path,need_unpack=need_unpack)
     # clone Project,运行之前请确认你已经安装了git
     def clone_project(self,accelerated_urls:List[Tuple[str,str,str]],target_directory:str=None):
         for accelerated_url, countries, description in accelerated_urls:
@@ -238,17 +242,34 @@ class GitHubAccelerator:
                 break
             except subprocess.TimeoutExpired as e:
                 # 删除项目文件，防止下一次clone时出错
-                os.removedirs(target_directory)
+                if os.path.exists(target_directory):
+                    os.removedirs(target_directory)
                 logger.error("⏰ time out!")
             except subprocess.CalledProcessError as e:
                 # 删除项目文件，防止下一次clone时出错
-                os.removedirs(target_directory)
+                if os.path.exists(target_directory):
+                    os.removedirs(target_directory)
                 logger.error(f"❌ git 命令失败:{e}")
+# 添加指令操作
+def main():
+    parser=argparse.ArgumentParser(description="🙂 Github accelerate tool")
+    parser.add_argument("--clone",dest="clone",action="store_true") # 设置是否是clone url
+    parser.add_argument("-u","--url",type=str,help="clone url/download url/raw url",dest="url") # 设置 url
+    parser.add_argument("-t","--type",type=str,dest="type",choices=["download","raw"],default="download",help="download type") # 下载类型
+    parser.add_argument("--zip_name","-z",type=str,dest="zip_name",help="zip name(Including the suffix)") # 设置压缩名称
+    parser.add_argument("--data_path","-dp",dest="data_path",help="The path to save the compressed file") # 设置压缩包存放的路径
+    parser.add_argument("--unzip",dest="unzip",action="store_true",help="Determine whether to extract") # 判断是否要解压
+    args=parser.parse_args()
+    # 编写逻辑
+    # original_url="https://github.com/PowerShell/PowerShell.git"
+    gitHub_accelerator = GitHubAccelerator()
+    if args.clone:
+        logger.info(f"📦 clone {args.url}") # 提示要克隆的项目
+        urls = gitHub_accelerator.rewrite_clone_url(args.url)
+        gitHub_accelerator.clone_project(accelerated_urls=urls)
+    else:
+        urls = gitHub_accelerator.rewrite_github_url(original_url=args.url,node_type=args.type)
+        url_desc = gitHub_accelerator.get_fastest_node(urls)
+        gitHub_accelerator.download_file(url_desc,name=args.zip_name,data_path=args.data_path,need_unpack=args.unzip)
 if __name__=="__main__":
-    original_url="https://github.com/PowerShell/PowerShell.git"
-    gitHub_accelerator=GitHubAccelerator()
-    # urls=gitHub_accelerator.rewrite_github_url(original_url)
-    # url_desc=gitHub_accelerator.get_fastest_node(urls)
-    # gitHub_accelerator.download_file(url_desc)
-    urls=gitHub_accelerator.rewrite_clone_url(original_url)
-    gitHub_accelerator.clone_project(accelerated_urls=urls)
+    main()
