@@ -4,6 +4,8 @@ from loguru import logger
 from pathlib import Path
 from tqdm import tqdm
 import zipfile
+import tarfile
+import rarfile
 from typing import List, Tuple, Union, Any
 import config
 from urllib.parse import urljoin
@@ -15,7 +17,7 @@ import subprocess
 from urllib import parse
 import argparse
 
-# 解压模块
+# 解压zip模块
 def recursive_unzip(zip_name:str,unpack_path:str):
     r"""
     :param zip_name: 压缩包名称
@@ -30,27 +32,42 @@ def recursive_unzip(zip_name:str,unpack_path:str):
     if not os.path.exists(zip_name):
         raise FileExistsError(f"{zip_name} not is exists.")
     # 将根目录解压
-    with zipfile.ZipFile(zip_name,"r") as zip_ref:
-        zip_ref.extractall(unpack_path)
-    # 对解药压之后的目录进行遍历
+    # zip压缩包的解压
+    if zipfile.is_zipfile(zip_name):
+        with zipfile.ZipFile(zip_name,"r") as zip_ref:
+            zip_ref.extractall(unpack_path)
+    # tar压缩包解压
+    elif tarfile.is_tarfile(zip_name):
+        with tarfile.open(zip_name,mode="r:*") as tar_ref:
+            tar_ref.extractall(unpack_path)
+    # rar压缩包解压
+    elif rarfile.is_rarfile(zip_name):
+        with rarfile.RarFile(zip_name, "r") as rar_ref:
+            rar_ref.extractall(unpack_path)
+    # else:
+    #     logger.error(f"❌ Unable to parse this type of compressed file.") # 无法解析这类压缩包，错误日志
+    #     return
+    # 对解压之后的目录进行遍历
     for root,dirs,files in os.walk(unpack_path):
         for file in files:
             next_zip_name=os.path.join(root,file)
-            if zipfile.is_zipfile(next_zip_name):
+            # 判断二级文件是不是压缩包
+            if zipfile.is_zipfile(next_zip_name) or tarfile.is_tarfile(next_zip_name) or rarfile.is_rarfile(next_zip_name):
                 next_unpack_path=os.path.splitext(next_zip_name)[0]
                 recursive_unzip(next_zip_name,next_unpack_path)
     # 解压成功日志
-    logger.info(f"unpack successful!")
+    logger.info(f"✅ unpack successful!")
 
 # 下载
 def download_data(url:str,name:str=None,data_path:str=None,need_unpack:bool=True):
     r"""
     Download the file from the given file path to the specified path and unzip it.
+    It is recommended to set the name.
     :param url: download url
     :param name: zip name (包含后缀.zip)
     :param data_path: zip root dir(压缩包根路径)
     :param need_unpack: Is it necessary to extract?(是否需要解压)
-    :return:
+    :return: None
     """
     # 判断是name是否提前定义
     if name is not None:
@@ -75,6 +92,8 @@ def download_data(url:str,name:str=None,data_path:str=None,need_unpack:bool=True
     response = requests.get(url, stream=True, proxies=proxies)
     # 获取数据长度
     file_size = int(response.headers.get("Content-Length"))
+    # 获取文件类型
+    file_type=str(response.headers.get("Content-Type"))
     # 下载数据到data_path
     with open(zip_path,"wb") as f,tqdm(
         total=file_size,
@@ -90,26 +109,25 @@ def download_data(url:str,name:str=None,data_path:str=None,need_unpack:bool=True
     # 压缩类型
     compression_formats = [
         "zip",
-        "7z",
         "rar",
-        "tar",
-        "tgz",
-        "tbz2",
+        "tar.gz",
+        "gz"
     ]
     # 解压数据
     if need_unpack: # 判断是否需要解压压缩包
         try:
-            compress_type=name.split(sep=".")[1] # 获取压缩类型
+            # compress_type=name.split(sep=".")[1] # 获取压缩类型
             zip_name=name.split(sep=".")[0] # 获取要解压到文件的名称
             unpack_path=os.path.join(data_dir,zip_name) # 解压到文件的路径
-            if compress_type in compression_formats:
-                recursive_unzip(zip_path,unpack_path)
-            else:
-                raise ValueError
+            recursive_unzip(zip_path, unpack_path)
+            # if compress_type in compression_formats:
+            #     recursive_unzip(zip_path,unpack_path)
+            # else:
+            #     raise ValueError
         except IndexError as e:
             logger.warning(f"Not find compress file.")
-        except ValueError as e:
-            logger.warning(f"Not find compress type.")
+        # except ValueError as e:
+        #     logger.warning(f"Not find compress type.")
 
 # Github加速组件
 class GitHubAccelerator:
