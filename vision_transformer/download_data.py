@@ -119,15 +119,17 @@ def download_data(url:str,name:str=None,data_path:str=None,need_unpack:bool=True
             # compress_type=name.split(sep=".")[1] # 获取压缩类型
             zip_name=name.split(sep=".")[0] # 获取要解压到文件的名称
             unpack_path=os.path.join(data_dir,zip_name) # 解压到文件的路径
-            recursive_unzip(zip_path, unpack_path)
+            # 判断是不是可以解压的压缩包
+            if zipfile.is_zipfile(zip_path) or rarfile.is_rarfile(zip_path) or tarfile.is_tarfile(zip_path):
+                recursive_unzip(zip_path, unpack_path)
             # if compress_type in compression_formats:
             #     recursive_unzip(zip_path,unpack_path)
-            # else:
-            #     raise ValueError
+            else:
+                raise ValueError
         except IndexError as e:
             logger.warning(f"Not find compress file.")
-        # except ValueError as e:
-        #     logger.warning(f"Not find compress type.")
+        except ValueError as e:
+            logger.warning(f"Not find compress type.")
 
 # Github加速组件
 class GitHubAccelerator:
